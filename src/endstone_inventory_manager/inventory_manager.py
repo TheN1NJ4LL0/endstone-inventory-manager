@@ -1,7 +1,7 @@
 from endstone.plugin import Plugin
 from endstone.command import Command, CommandSender
 from endstone.event import event_handler, PlayerJoinEvent
-from endstone.form import ActionForm, MessageForm
+from endstone.form import ActionForm, MessageForm, ModalForm, TextInput
 from endstone import Player
 import os
 from pathlib import Path
@@ -566,7 +566,7 @@ class InventoryManagerPlugin(Plugin):
     # OFFLINE PLAYER ENDER CHEST VIEWING
     # ──────────────────────────────────────────────────────────────────────
     def _pick_offline_player(self, viewer: Player):
-        """Show list of offline players to view their ender chests"""
+        """Show text input to search for offline player"""
         if not RAPIDNBT_AVAILABLE:
             viewer.send_message("§cRapidNBT is not available. Cannot view offline player data.")
             return self.open(viewer)
@@ -575,6 +575,37 @@ class InventoryManagerPlugin(Plugin):
             viewer.send_message("§cChestForm is not available. Cannot display offline ender chests.")
             return self.open(viewer)
 
+        # Create text input form
+        form = ModalForm(title="§lOffline Player Search")
+        form.add_component(
+            TextInput(
+                label="Player Name",
+                placeholder="Enter player name...",
+                default_value=""
+            )
+        )
+
+        def on_submit(pl, data):
+            if data is None:
+                # User cancelled
+                return self.open(pl)
+
+            # Get player name and strip leading/trailing whitespace
+            # Preserves spaces within the name (e.g., "Player Name" stays as "Player Name")
+            player_name = data[0].strip() if data and len(data) > 0 else ""
+
+            if not player_name or player_name == "":
+                pl.send_message("§cPlease enter a player name.")
+                return self._pick_offline_player(pl)
+
+            # Search for player file (supports names with spaces)
+            return self._find_offline_player(pl, player_name)
+
+        form.on_submit = on_submit
+        viewer.send_form(form)
+
+    def _find_offline_player(self, viewer: Player, search_name: str):
+        """Find offline player by name and show their ender chest"""
         # Get world folder path - try common Bedrock server locations
         possible_paths = [
             Path("worlds") / "Bedrock level" / "players",  # Default Bedrock world
@@ -587,7 +618,6 @@ class InventoryManagerPlugin(Plugin):
         for path in possible_paths:
             if path.exists():
                 player_data_path = path
-                self.logger.info(f"Found player data at: {path}")
                 break
 
         if not player_data_path or not player_data_path.exists():
@@ -602,26 +632,56 @@ class InventoryManagerPlugin(Plugin):
             viewer.send_message("§cNo offline player data found.")
             return self.open(viewer)
 
-        # Create form with player names
+        # Search for matching player (supports spaces in names)
+        # Example: "The Builder" will match "TheBuilder123" or "The Builder"
+        search_lower = search_name.lower()
+        matches = []
+
+        for player_file in player_files:
+            # Try to read player name from NBT data
+            try:
+                nbt_data = RapidNBT.read_nbt(str(player_file))
+                # Try to get the player's actual name from NBT
+                player_name = nbt_data.get("PlayerName", player_file.stem)
+                if not player_name or player_name == "":
+                    player_name = player_file.stem
+
+                # Check if name matches (case-insensitive, preserves spaces)
+                if search_lower in player_name.lower():
+                    matches.append((player_name, player_file))
+
+            except Exception as e:
+                # Fallback to filename if NBT read fails
+                self.logger.warning(f"Failed to read player name from {player_file}: {e}")
+                player_name = player_file.stem
+                if search_lower in player_name.lower():
+                    matches.append((player_name, player_file))
+
+        if not matches:
+            viewer.send_message(f"§cNo offline player found matching '{search_name}'")
+            return self._pick_offline_player(viewer)
+
+        if len(matches) == 1:
+            # Exact match - show directly
+            player_name, player_file = matches[0]
+            return self._show_offline_enderchest(viewer, player_name, player_file)
+
+        # Multiple matches - show selection
         form = ActionForm(
-            title="§lOffline Players",
-            content="§7Select a player to view their ender chest\n§c(View Only)"
+            title="§lMultiple Matches Found",
+            content=f"§7Found {len(matches)} players matching '§e{search_name}§7'"
         )
 
-        player_list = []
-        for player_file in player_files:
-            # Extract player name from filename (remove .dat extension)
-            player_name = player_file.stem
-            player_list.append((player_name, player_file))
+        for player_name, _ in matches:
             form.add_button(f"§7{player_name}")
 
-        form.add_button("« Back")
+        form.add_button("« Search Again")
 
         def on_submit(pl, idx):
-            if idx is None or idx >= len(player_list):
-                return self.open(pl)
+            if idx is None or idx >= len(matches):
+                return self._pick_offline_player(pl)
 
-            player_name, player_file = player_list[idx]
+            player_name, player_file = matches[idx]
             return self._show_offline_enderchest(pl, player_name, player_file)
 
         form.on_submit = on_submit
