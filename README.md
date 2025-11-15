@@ -17,10 +17,13 @@ A comprehensive Endstone plugin that allows server administrators to view and ma
 - **NBT Data Preservation**: Maintains enchantments, custom names, lore, shulker box contents, and all other NBT data
 
 ### 📦 Offline Player Support
+- **Database-Powered**: Stores player inventory and ender chest data in SQLite database
 - **View Offline Ender Chests**: Access ender chests of players who are offline
 - **Copy Items**: Copy items from offline player ender chests to your inventory
 - **Visual Display**: View offline ender chests in a visual chest interface
 - **Read-Only Safety**: Cannot modify offline player data (view and copy only)
+- **Text Search**: Search for players by name (supports partial matching and spaces)
+- **NBT Fallback**: Falls back to reading NBT files for players who haven't joined since database was added
 
 ### 🎨 User Interface
 - **Clean Menu Structure**: Organized hierarchical menus
@@ -62,6 +65,39 @@ A comprehensive Endstone plugin that allows server administrators to view and ma
 
 > **Note**: Without optional dependencies, the plugin will still work but offline player viewing will be disabled.
 
+## 🗄️ Database System
+
+The plugin uses an **SQLite database** to store player inventory and ender chest data for offline viewing.
+
+### How It Works
+
+1. **Auto-Save on Join/Leave**: When players join or leave the server, their inventory and ender chest data is automatically saved to the database
+2. **Database-First Search**: When searching for offline players, the plugin queries the database first for fast results
+3. **NBT Fallback**: If a player isn't in the database (e.g., they haven't joined since the plugin was installed), the plugin falls back to reading their `.dat` file
+4. **Thread-Safe**: Uses SQLite's WAL mode and threading locks for safe concurrent access
+
+### Database Location
+
+```
+plugins/inventory_manager_data/inventories.db
+```
+
+### Database Tables
+
+- **users**: Stores player information (XUID, name, join/leave times)
+- **inventories**: Stores player inventory items with full NBT data
+- **ender_chests**: Stores ender chest items with full NBT data
+
+### Data Stored
+
+For each item, the database stores:
+- Item type, amount, damage value
+- Display name, lore, enchantments
+- Unbreakable flag and other NBT data
+- Slot position
+
+> **Note**: The database is automatically created on first run. No manual setup required!
+
 ## 🎯 Usage
 
 ### Command
@@ -90,7 +126,9 @@ Opens the inventory manager interface.
 │   │       └── View Only (Visual Chest) - Read-only visual display
 │
 └── Offline Players (Ender Chest Only)
-    └── Select Player
+    ├── Text Search (Enter player name)
+    │   └── If multiple matches → Select Player
+    └── Selected Player's Ender Chest
         ├── Actions (List View) - Copy items only
         └── View Only (Visual Chest) - Read-only visual display
 ```
@@ -111,10 +149,18 @@ Opens the inventory manager interface.
 
 1. Run `/manageinv`
 2. Select **"Offline Players (Ender Chest Only)"**
-3. Choose a player from the list
-4. Choose view mode:
+3. **Enter player name** in the text search box (supports partial matching and spaces)
+4. If multiple matches found, select the correct player
+5. Choose view mode:
    - **Actions (List View)**: Click an item → Copy to your inventory
    - **View Only (Visual Chest)**: See all items in chest interface
+
+**Search Tips:**
+- Search is case-insensitive: "steve" matches "Steve"
+- Partial matching: "The B" finds "The Builder", "The Boss", etc.
+- Supports spaces: "Player Name" works correctly
+- Single match: Shows ender chest directly
+- Multiple matches: Shows selection menu
 
 ### Item Actions Explained
 
@@ -223,9 +269,25 @@ MIT License
 
 ## 📌 Version
 
-**0.2.4**
+**0.3.0**
 
 ### Changelog
+
+#### v0.3.0 (Database Update)
+- **🗄️ Database System**: Implemented SQLite database for storing player inventory and ender chest data
+- **Auto-Save**: Automatically saves player data when they join/leave the server
+- **Database-First Search**: Searches database first for offline players, then falls back to NBT files
+- **Better Performance**: Faster offline player search using database queries
+- **Thread-Safe**: Uses WAL mode and threading locks for concurrent access
+- **Persistent Storage**: Player data stored in `plugins/inventory_manager_data/inventories.db`
+- **Backward Compatible**: Still supports NBT file reading for players who haven't joined since update
+
+#### v0.2.5
+- **Improved offline player search**: Replaced dropdown with text input search box
+- **Simplified ChestForm display**: Removed pre-fill workaround (using PrimeBDS approach)
+- **Better player name display**: Reads actual player names from NBT data instead of XUIDs
+- **Space support**: Full support for player names with spaces
+- **Scalability**: Text search works efficiently with hundreds/thousands of players
 
 #### v0.2.4
 - Fixed offline players button color for better visibility
