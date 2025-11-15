@@ -1,0 +1,9 @@
+src/endstone_inventory_manager.egg-info/entry_points.txt
+src/endstone_inventory_manager.egg-info/PKG-INFO
+src/endstone_inventory_manager.egg-info/requires.txt
+src/endstone_inventory_manager.egg-info/SOURCES.txt
+src/endstone_inventory_manager.egg-info/top_level.txt
+src/endstone_inventory_manager.egg-info/dependency_links.txt
+build/lib/endstone_inventory_manager/inventory_manager.py
+build/lib/endstone_inventory_manager/__init__.py
+dist/endstone_inventory_manager-0.2.4-py3-none-any.whl

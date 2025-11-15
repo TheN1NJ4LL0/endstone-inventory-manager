@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "endstone-inventory-manager"
+version = "0.2.4"
+description = "An Endstone plugin for managing player inventories (online players)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "TheN1NJ4LL0" }
+]
+dependencies = [
+    "endstone",
+    "rapidnbt>=1.1.5",
+    "chest_form_api_endstone >= 1.0.0"
+]
+
+[project.entry-points."endstone"]
+inventory-manager = "endstone_inventory_manager.inventory_manager:InventoryManagerPlugin"
