@@ -618,13 +618,15 @@ class InventoryManagerPlugin(Plugin):
             return self.open(viewer)
 
         # Create text input form
-        form = ModalForm(title="§lOffline Player Search")
-        form.add_component(
-            TextInput(
-                label="Player Name",
-                placeholder="Enter player name...",
-                default_value=""
-            )
+        form = ModalForm(
+            title="§lOffline Player Search",
+            controls=[
+                TextInput(
+                    label="Player Name",
+                    placeholder="Enter player name...",
+                    default_value=""
+                )
+            ]
         )
 
         def on_submit(pl, data):
